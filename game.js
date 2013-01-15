@@ -24,7 +24,9 @@ var nitroTime=2*WorldStep;
 var trashBin=new Array();
 console.log("hello man");
 var velDel=1/SCALE;
+var map={};
 var c=0;
+
 function construct(){
     for(var i=99;i>=0;i--)
         ammofree.push(i);
@@ -83,9 +85,9 @@ var canvas={"width":720,"height":480};
         //modelArray.body = ass;
         // the body
         this["body"]=ass;
-        // userid
+        //uid of player
         this["uid"]=-1;
-        //username or the display name
+        //display name of the player
         this["username"];
         //current position
         this["position"]={"x":100*(avl.length+1)/SCALE,"y":100*(avl.length+1)/SCALE};
@@ -266,6 +268,11 @@ function readBuffer(queue,broadcastIt){
             aData["ms"]=playerArray[ind]["ms"];
             aData["regen"]=playerArray[ind]["regen"];
             playerArray[ind]["sock"].write(JSON.stringify(aData)+"\0");
+
+            var mapdata={};
+            mapdata["info"]="map";
+            mapdata["data"]=map
+            playerArray[ind]["sock"].write(JSON.stringify(mapdata)+"\0");
 
             for(var i=0;i<avl.length;i++)
             {   var data={};
@@ -565,8 +572,73 @@ function init() {
     bdy=world.CreateBody(bodyDef);
     bdy.SetUserData('wall');
     bdy.CreateFixture(fixDef);
-    ///////////////////////////////////////////////////////////////
 
+
+    /////////////////////////       MAP GENERATION       //////////////////////////////////////
+    /*
+    EVERY DIMENSION IS IN PIXEL COORDINATES NOT WORLD COORDINATES
+
+    pillars is an array storing the pillar data to be generated
+    the parameters are in the form of [x,y,r]
+    x:abscissa
+    y:ordinate
+    r:radius
+
+    walls is an array storing the wall data to be generated
+    the parameters are in the form of [x,y,l,b,rot]
+     x:abscissa
+     y:ordinate
+     l:length
+     b:breadth
+     rot:angle
+     */
+    var pillars=[];
+    var walls=[];
+    var id=0;
+    if(id==0){
+        pillars=[[200,100,25],[200,200,15],[200,300,10],[200,400,30]];
+        walls=[[400,100,100,25,0],[400,200,200,10,0],[400,300,100,25,45],[400,400,100,25,90]];
+    }else if(id==1){
+        pillars=[[],[],[],[],[]];
+        walls=[[],[],[],[],[]];
+    }else if(id==2){
+        pillars=[[],[],[],[],[]];
+        walls=[[],[],[],[],[]];
+    }else if(id==3){
+        pillars=[[],[],[],[],[]];
+        walls=[[],[],[],[],[]];
+    }
+
+    fixDef.shape = new b2PolygonShape;
+    for(var i=0;i<walls.length;i++)
+    {
+        bodyDef.position.x = walls[i][0]/SCALE;
+        bodyDef.position.y = walls[i][1]/SCALE;
+        fixDef.shape.SetAsBox((walls[i][2] / SCALE) / 2, (walls[i][3] / SCALE) / 2);
+        bdy=world.CreateBody(bodyDef);
+        bdy.SetUserData('wall');
+        bdy.CreateFixture(fixDef);
+        bdy.SetAngle(walls[i][4]);
+    }
+
+    for(var i=0;i<pillars.length;i++)
+    {
+        bodyDef.position.x = pillars[i][0]/SCALE;
+        bodyDef.position.y = pillars[i][1]/SCALE;
+        fixDef.shape = new b2CircleShape(pillars[i][2]/SCALE);
+        bdy=world.CreateBody(bodyDef);
+        bdy.SetUserData('pillar');
+        bdy.CreateFixture(fixDef);
+    }
+
+
+    map["pillars"]=pillars;
+    map["walls"]=walls;
+
+
+
+
+    //////////////////////////////////////////////////////////////
 
 
 
@@ -794,22 +866,20 @@ function clearAmmo(){
     }
 
     this.getPlayers=function(){
-        var data={};
-        console.log("getPlayers invoked");
-        data["info"]="playerList";
-        data["data"]=new Array();
-        var c=0;
-        for(var j=0;j<avl.length;j++)
-        {
-            data["data"][c]={};
-            data["data"][c]["uid"]=playerArray[avl[j]].userId;
-            data["data"][c]["name"]=playerArray[avl[j]].username;
+        var payload={};
+        payload.info="players";
+        payload.data=new Array();
+        c=0;
+        for(var i=0;i<avl.length;i++)
+        {   payload.data[c]={};
+            payload.data[c].uid=playerArray[avl[i]].uid;
+            payload.data[c].username=playerArray[avl[i]].username;
             c++;
         }
-        return data;
+        return payload;
     }
 
-    this.numPLayers=function(){
+    this.numPlayers=function(){
         return avl.length;
     }
 
