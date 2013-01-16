@@ -88,7 +88,7 @@ var canvas={"width":720,"height":480};
         //uid of player
         this["uid"]=-1;
         //display name of the player
-        this["username"];
+        this["username"]="dumb";
         //current position
         this["position"]={"x":100*(avl.length+1)/SCALE,"y":100*(avl.length+1)/SCALE};
         //the final destined position
@@ -866,14 +866,12 @@ function clearAmmo(){
     }
 
     this.getPlayers=function(){
-        var payload={};
-        payload.info="players";
-        payload.data=new Array();
+        var payload=new Array()
         c=0;
         for(var i=0;i<avl.length;i++)
-        {   payload.data[c]={};
-            payload.data[c].uid=playerArray[avl[i]].uid;
-            payload.data[c].username=playerArray[avl[i]].username;
+        {   payload[c]={};
+            payload[c].uid=playerArray[avl[i]].uid;
+            payload[c].username=playerArray[avl[i]].username;
             c++;
         }
         return payload;

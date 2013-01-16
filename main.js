@@ -241,16 +241,19 @@ function readBuffer(queue){
 function readRooms(sockvar){
     var payload={};
     payload.info="rmList";
-    payload.data=new Array();
+    payload.rooms=new Array();
     console.log(payload)    ;
+    var c=0;
     for(var i=0;i<roomsUsed.length;i++)
     {
         if(rooms[roomsUsed[i]]!=null)
-        {
-            payload.data.push(rooms[roomsUsed[i]].reference.getPlayers());
+        {   payload.rooms[c]={};
+            payload.rooms[c].roomId=rooms[roomsUsed[i]].roomId;
+            payload.rooms[c].players=rooms[roomsUsed[i]].reference.getPlayers();
+            c++;
         }
     }
-    console.log(payload)    ;
+    console.log(payload);
      sockvar.write(JSON.stringify(payload)+"\0");
 }
 
