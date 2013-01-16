@@ -174,7 +174,7 @@ function Ammo(){
     //current position
     this["position"]={"x":100*(avl.length+1),"y":100*(avl.length+1)};
     //the final destined position
-    this["final"]={"x":this["position"]["x"]+100*(avl.length+1),"y":this["position"]["y"]+100*(avl.length+1)};
+    this["dir"]={"cos":100*(avl.length+1),"sin":100*(avl.length+1)};
     // the x and y steps used update position incrementally
     this["xStep"]=0;
     this["yStep"]=0;

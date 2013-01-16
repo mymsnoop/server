@@ -1,8 +1,12 @@
 var net = require('net');
+var numPlayers=0;
 var playerArray=new Array();
 var avl=new Array();
 var free=[5,4,3,2,1,0];
 var buffer=[];
+var animationPointer=new Array();
+var SPEED=100;
+var started=false;
 var gameStep;
 var timeStep=100;
 var count=0;
@@ -113,9 +117,9 @@ function Player(sockvar){
     //the unique id of a player on that arena
     //this["id"]=numPlayers++;
     //current position
-    this["position"]={"x":100*(avl.length+1),"y":100*(avl.length+1)};
+    this["position"]={"x":100*numPlayers,"y":100*numPlayers};
     //the final destined position
-    this["final"]={"x":100*(avl.length+1),"y":100*(avl.length+1)};
+    this["final"]={"x":100*numPlayers,"y":100*numPlayers};
     // the x and y steps used update position incrementally
     this["xStep"]=0;
     this["yStep"]=0;
@@ -166,10 +170,14 @@ function readBuffer(queue){
             //clearInterval(animationPointer[data.pid]);
             playerArray[data.pid]["final"]["x"]=data.position.x;
             playerArray[data.pid]["final"]["y"]=data.position.y;
-            var numTimes=parseInt((calculateTime(playerArray[data.pid]["position"]["x"],playerArray[data.pid]["position"]["y"],data.position.x,data.position.y,data.pid))*10);
+            var numTimes=parseInt((calculateTime(playerArray[data.pid]["position"]["x"],playerArray[data.pid]["position"]["y"],data.position.x,data.position.y))*10);
             playerArray[data.pid]["steps"]=numTimes;
-            playerArray[data.pid]["xStep"]=parseInt((data.position.x-playerArray[data.pid]["position"]["x"])/numTimes);
-            playerArray[data.pid]["yStep"]=parseInt((data.position.y-playerArray[data.pid]["position"]["y"])/numTimes);
+            //console.log("number of times is :"+numTimes);
+            //playerArray[data.pid]["animCount"]=numTimes;
+            //playerArray[data.pid]["isChanged"] =true;
+            playerArray[data.pid]["xStep"]=(data.position.x-playerArray[data.pid]["position"]["x"])/numTimes;
+            playerArray[data.pid]["yStep"]=(data.position.y-playerArray[data.pid]["position"]["y"])/numTimes;
+            //animationPointer[data.pid]=setInterval(function(){updatePosition(data.pid,xInc,yInc)},100);
         }else if(data.info=="join"){
 
             var p=new Player(sock);
@@ -179,12 +187,9 @@ function readBuffer(queue){
             console.log("Player id"+ ind +" Connected...");
 
             var aData={};
-            aData["info"]="player";
+            aData["info"]="playerId";
             aData["position"]={"x":playerArray[ind]["position"]["x"],"y":playerArray[ind]["position"]["y"]};
             aData["pid"]=ind;
-            aData["hp"]=playerArray[ind]["hp"];
-            aData["ms"]=playerArray[ind]["ms"];
-            aData["regen"]=playerArray[ind]["regen"];
             playerArray[ind]["sock"].write(JSON.stringify(aData)+"\0");
 
             for(var i=0;i<avl.length;i++)
@@ -341,8 +346,8 @@ function calculateDistance(x1,y1,x2,y2){
 return Math.sqrt(Math.pow((x1-x2),2)+Math.pow((y1-y2),2));
 }
 
-function calculateTime(x1,y1,x2,y2,id){
-    var time=(Math.sqrt(Math.pow((x1-x2),2)+Math.pow((y1-y2),2)))/playerArray[id]["ms"];
+function calculateTime(x1,y1,x2,y2){
+    var time=(Math.sqrt(Math.pow((x1-x2),2)+Math.pow((y1-y2),2)))/SPEED;
     console.log("time to run:"+time);
     return time;
 }

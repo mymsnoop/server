@@ -103,6 +103,7 @@ function Player(sockvar){
     this["sock"]=sockvar;
     this["isChanged"] =false;
     this["lastSent"]="";
+    this["animation"];
 }
 
 // When flash sends us data, this method will handle it
@@ -139,14 +140,15 @@ function readBuffer(queue){
         console.log("sock is:"+sock);
         if(data.info=="position")
         {   //console.log("position buffer found..");
-            clearInterval(animationPointer[data.pid]);
+            //clearInterval(animationPointer[data.pid]);
             var numTimes=parseInt((calculateTime(playerArray[data.pid]["position"]["x"],playerArray[data.pid]["position"]["y"],data.position.x,data.position.y))*10);
             //console.log("number of times is :"+numTimes);
             playerArray[data.pid]["animCount"]=numTimes;
             playerArray[data.pid]["isChanged"] =true;
             var xInc=(data.position.x-playerArray[data.pid]["position"]["x"])/numTimes;
             var yInc=(data.position.y-playerArray[data.pid]["position"]["y"])/numTimes;
-            animationPointer[data.pid]=setInterval(function(){updatePosition(data.pid,xInc,yInc)},100);
+            playerArray[data.pid]["animation"]=setInterval(function(){updatePosition(data.pid,xInc,yInc)},100);
+            console.log("animation pointer.."+playerArray[data.pid]["animation"]);
         }else if(data.info=="join"){
 
             var p=new Player(sock);
@@ -189,7 +191,7 @@ function updatePosition(id,xinc,yinc){
     console.log("x:"+playerArray[id]["position"]["x"]+"&y:"+playerArray[id]["position"]["y"]);
     if(playerArray[id]["animCount"]<=0)
     {
-        clearInterval(animationPointer[id]);
+        clearInterval(playerArray[id]["animation"]);
         playerArray[id]["isChanged"]=false;
         console.log("Updation Stopped!");
         console.log("Final Position is x:"+playerArray[id]["position"]["x"]+" y:"+playerArray[id]["position"]["y"]);

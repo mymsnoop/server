@@ -76,7 +76,7 @@ var server = net.createServer(function (socket) {
     }
 
     function onDisconnect(from) {
-        //console.log("the disconnect code is .."+from);
+        console.log("the disconnect code is .."+from);
         var data={};
         for(var i=0;i<avl.length;i++)
         {
@@ -144,7 +144,7 @@ function Player(sockvar){
     //shield
     this["shield"]=false;
     //dimensions of the tank
-    this["size"]=15;
+    this["size"]=30;
     //the socket variable of the player
     this["sock"]=sockvar;
     // acknowledge signal true=sent   false=waiting
@@ -178,7 +178,7 @@ function Ammo(){
     // range
     this["rng"]=500;
     //dimensions of the bullet
-    this["size"]=2.5;
+    this["size"]=5;
     // acknowledge signal true=sent   false=waiting
     this["ack"]=true;
 }
@@ -212,10 +212,9 @@ function readBuffer(queue){
     while(queue.length!=0)
     {   var firstReq=queue.shift();
         var data=firstReq["data"];
-        //console.log(playerArray);
-        //console.log("data is:"+data);
+        console.log("data is:"+data);
         var sock=firstReq["playerSock"];
-        //console.log("sock is:"+sock);
+        console.log("sock is:"+sock);
         if(data.info=="position")
         {   console.log("position buffer found..");
             //clearInterval(animationPointer[data.pid]);
@@ -333,31 +332,23 @@ function updatePosition(){
         }
         if(ammo[ammoavl[i]]["steps"]<=0)
         {
-            ammofree.push(ammoavl.splice(i,1)[0]);
+            ammofree.push(ammoavl.splice(i,1));
             console.log("ammo stopped !"+ammoavl.length);
         }
     }
-
-    var tanksBumped=new Array();
 
     for(var j=0;j<avl.length-1;j++)
     {
         for(var k=j+1;k<avl.length;k++)
         {
-            if(checkCollision(playerArray[avl[j]],playerArray[avl[k]]))
-            {   console.log("collision between tanks.."+avl[j]+"&"+avl[k]);
-                playerArray[avl[j]]["position"]["x"]-=playerArray[avl[j]]["xStep"];
-                playerArray[avl[j]]["position"]["y"]-=playerArray[avl[j]]["yStep"];
-                playerArray[avl[j]]["position"]["x"]-=playerArray[avl[k]]["xStep"];
-                playerArray[avl[j]]["position"]["y"]-=playerArray[avl[k]]["yStep"];
-                playerArray[avl[j]]["steps"]=0;
-                playerArray[avl[j]]["xStep"]=0;
-                playerArray[avl[j]]["yStep"]=0;
-                playerArray[avl[k]]["steps"]=0;
-                playerArray[avl[k]]["xStep"]=0;
-                playerArray[avl[k]]["yStep"]=0;
-                tanksBumped.push(avl[j]);
-                tanksBumped.push(avl[k]);
+            if(checkCollision(playerArray[j],playerArray[k]))
+            {   console.log("collision between tanks.."+j+"&"+k);
+                playerArray[j]["steps"]=0;
+                playerArray[j]["xStep"]=0;
+                playerArray[j]["yStep"]=0;
+                playerArray[k]["steps"]=0;
+                playerArray[k]["xStep"]=0;
+                playerArray[k]["yStep"]=0;
             }
         }
     }
@@ -373,12 +364,12 @@ function updatePosition(){
     {
         for(var k=j+1;k<ammoavl.length;k++)
         {
-            if(checkCollision(ammo[ammoavl[j]],ammo[ammoavl[k]]))
-            {   console.log("collision between ammo.."+ammoavl[j]+"&"+ammoavl[k]);
+            if(checkCollision(ammo[j],ammo[k]))
+            {   console.log("collision between ammo.."+j+"&"+k);
                 missilesLost.push(ammoavl[j]);
                 missilesLost.push(ammoavl[k]);
-                ammofree.push(ammoavl.splice(j,1)[0]);
-                ammofree.push(ammoavl.splice(k,1)[0]);
+                ammofree.push(ammoavl.splice(j,1));
+                ammofree.push(ammoavl.splice(k,1));
                 break;
             }
         }
@@ -388,10 +379,10 @@ function updatePosition(){
     {
         for(var k=0;k<ammoavl.length;k++)
         {
-            if(checkCollision(playerArray[avl[j]],ammo[ammoavl[k]]))
-            {   console.log("collision between tank and ammo.."+avl[j]+"&"+ammoavl[k]);
+            if(checkCollision(playerArray[j],ammo[k]))
+            {   console.log("collision between tank and ammo.."+j+"&"+k);
                 missilesLost.push(ammoavl[k]);
-                ammofree.push(ammoavl.splice(k,1)[0]);
+                ammofree.push(ammoavl.splice(k,1));
                 playerArray[j]["hp"]-=ammo[k]["dmg"];
                 if(playerArray[j]["hp"]<=0)
                 {
@@ -405,7 +396,7 @@ function updatePosition(){
     if(missilesLost.length>0)
     {  while(missilesLost.length>0)
         {
-            data["data"]["missiles"].push(missilesLost.pop());
+            data["data"]["missiles"].push([missilesLost.pop()]);
         }
         toSend=true;
     }
@@ -448,7 +439,6 @@ function checkCollision(u1,u2){
     //console.log("y gap::"+ydiff);
     */
     var dist= Math.sqrt(xdiff*xdiff+ydiff*ydiff);
-    console.log("dist is::"+dist);
     if(dist<=u1["size"]+u2["size"])
     {
         isCollision=true;

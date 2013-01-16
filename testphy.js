@@ -9,7 +9,7 @@ var free=[5,4,3,2,1,0];
 var buffer=[];
 var gameStep;
 var SCALE = 60;
-var WorldStep=60;
+var WorldStep=30;
 var count=0;
 var gameStarted=false;
 var tankSize={"width":100,"height":40};
@@ -21,6 +21,7 @@ var turnRate=0.7;
 var teleportationTime=0.5*WorldStep;
 var invisibleTime=5*WorldStep;
 var nitroTime=2*WorldStep;
+var trashBin=new Array();
 
 var velDel=1/SCALE;
 var c=0;
@@ -167,9 +168,9 @@ var server = net.createServer(function (socket) {
         fixDef.shape = new b2PolygonShape;
         var bodyDef = new b2BodyDef;
         bodyDef.type = b2Body.b2_dynamicBody;
-        console.log(type);
-        console.log(ammoSize[type].width);
-        console.log(ammoSize[type].height);
+        //console.log(type);
+        //console.log(ammoSize[type].width);
+        //console.log(ammoSize[type].height);
         fixDef.shape.SetAsBox(ammoSize[type].width/(2*SCALE),ammoSize[type].height/(2*SCALE));
         bodyDef.position.x = xpos;
         bodyDef.position.y = ypos;
@@ -245,8 +246,9 @@ function getTan(id,isTank){
     return b/p;
 }
 
-function readBuffer(queue){
-    broadcastData();
+function readBuffer(queue,broadcastIt){
+    if(broadcastIt)
+        broadcastData();
     buffer=[];
     while(queue.length!=0)
     {   var firstReq=queue.shift();
@@ -263,10 +265,10 @@ function readBuffer(queue){
             playerArray[data.pid].body.SetLinearDamping(0);
             var xdiff=playerArray[data.pid].final.x-playerArray[data.pid].body.GetPosition().x;
             var ydiff=playerArray[data.pid].final.y-playerArray[data.pid].body.GetPosition().y;
-            console.log(180 * Math.atan2( ydiff,xdiff) / 3.141593);
+            //console.log(180 * Math.atan2( ydiff,xdiff) / 3.141593);
             //playerArray[data.pid].body.SetAngle(45);
             playerArray[data.pid].body.SetAngle(180 * Math.atan2( ydiff,xdiff) / 3.141593);
-            console.log(playerArray[data.pid].body.GetAngle());
+            //console.log(playerArray[data.pid].body.GetAngle());
             playerArray[data.pid].body.SetLinearVelocity(new b2Vec2( playerArray[data.pid]["ms"]*getCos(data.pid,true), playerArray[data.pid]["ms"]*getSin(data.pid,true)));
             //console.log(Math.atan(getTan(data.pid,true)));
             //playerArray[data.pid].body.SetAngle(Math.atan2((playerArray[data.pid].final.y-playerArray[data.pid].body.GetPosition().y)/(playerArray[data.pid].final.x-playerArray[data.pid].body.GetPosition().x)));
@@ -346,7 +348,7 @@ function readBuffer(queue){
             if(data.type==0)
             {
                 var ind=ammofree.pop();
-                console.log("missileEnation is "+missileEnation);
+                //console.log("missileEnation is "+missileEnation);
                 var a=new Ammo(playerArray[data.pid].body.GetPosition().x+data.dir.cos*missileEnation,playerArray[data.pid].body.GetPosition().y+data.dir.sin*missileEnation,0);
                 ammo[ind]=a;
                 ammo[ind].body.SetUserData(['ammo',ind]);
@@ -449,6 +451,24 @@ function broadcastData(){
                     playerArray[avl[i]]["final"]["y"]=-1
                 }
 
+            }
+
+            if(playerArray[avl[i]]["teleTime"]>0){
+                playerArray[avl[i]]["teleTime"]--;
+                if(playerArray[avl[i]]["teleTime"]==0)
+                {   console.log("teleport initiated");
+                    playerArray[avl[i]]["body"].SetLinearVelocity(new b2Vec2(0,0));
+                    playerArray[avl[i]].body.SetLinearDamping(0);
+                    playerArray[avl[i]]["body"].SetPosition(new b2Vec2(playerArray[avl[i]]["final"]["x"],playerArray[avl[i]]["final"]["y"]));
+                    var edata={};
+                    edata["info"]="teleportEnded";
+                    edata["position"]={"x":playerArray[avl[i]].body.GetPosition().x,"y":playerArray[avl[i]].body.GetPosition().y};
+                    edata["pid"]=avl[i];
+                    for(var j=0;j<avl.length;j++)
+                    {
+                        playerArray[avl[j]]["sock"].write(JSON.stringify(edata)+"\0");
+                    }
+                }
             }
 
         }else{
@@ -605,7 +625,9 @@ function init() {
     //////////////////////////            ONCONTACT LISTENER            ///////////////////////////////////////////////////
     listener.BeginContact = function(contact) {
         var body1=contact.GetFixtureA().GetBody();
-        var body2=contact.GetFixtureB().GetBody()
+        var body2=contact.GetFixtureB().GetBody();
+        var pos1=-1;
+        var pos2=-1;
         if(body1.GetUserData()[0]=="ammo"){
             //console.log("ammoavl"+ammoavl);
             //console.log("ammofree"+ammofree);
@@ -617,15 +639,20 @@ function init() {
             for(var i=0;i<ammoavl.length;i++)
                 console.log(ammoavl[i]);
             console.log("index in ammoavl "+ammoavl.indexOf(parseInt(body1.GetUserData()[1])));
+            pos1=  ammoavl.indexOf(parseInt(body1.GetUserData()[1]));
             //console.log("index in ammoavl "+ammoavl.indexOf(parseInt(body1.GetUserData()[1])));
             //retIndex(body2.GetUserData()[1])>-1?(ammofree.push(ammoavl.splice(retIndex(body2.GetUserData()[1]),1)[0])):console.log("index not found");
-            world.DestroyBody(body1);
+            //world.DestroyBody(body1);
+            trashBin.push(body1.GetUserData()[1]);
+            console.log(ammo[dump["pid"]].body);
             //ammofree.push(ammoavl.splice(ammoavl.indexOf(body1.GetUserData()[1]),1)[0]);
             //console.log("ammoavl"+ammoavl);
             //console.log("ammofree"+ammofree);
-            for(var j=0;j<avl.length;j++)
-            {      console.log(JSON.stringify(dump));
-                playerArray[avl[j]]["sock"].write(JSON.stringify(dump)+"\0");
+            if(dump["pid"]!=null) {
+                for(var j=0;j<avl.length;j++)
+                {      console.log(JSON.stringify(dump));
+                    playerArray[avl[j]]["sock"].write(JSON.stringify(dump)+"\0");
+                }
             }
         }else if(body1.GetUserData()[0]=="tank"){
 
@@ -644,14 +671,19 @@ function init() {
             for(var i=0;i<ammoavl.length;i++)
                 console.log(ammoavl[i]);
             console.log("index in ammoavl "+ammoavl.indexOf(parseInt(body1.GetUserData()[1])));
+            pos2=ammoavl.indexOf(parseInt(body1.GetUserData()[1]));
             //retIndex(body2.GetUserData()[1])>-1?(ammofree.push(ammoavl.splice(retIndex(body2.GetUserData()[1]),1)[0])):console.log("index not found");
-            world.DestroyBody(body2);
+            //world.DestroyBody(body2);
+            trashBin.push(body2.GetUserData()[1]);
+            console.log(ammo[dump["pid"]].body);
             //ammofree.push(ammoavl.splice(ammoavl.indexOf(body2.GetUserData()[1]),1)[0]);
             //console.log("ammoavl"+ammoavl);
             //console.log("ammofree"+ammofree);
-            for(var j=0;j<avl.length;j++)
-            {   console.log(JSON.stringify(dump));
-                playerArray[avl[j]]["sock"].write(JSON.stringify(dump)+"\0");
+            if(dump["pid"]!=null) {
+                for(var j=0;j<avl.length;j++)
+                {   console.log(JSON.stringify(dump));
+                    playerArray[avl[j]]["sock"].write(JSON.stringify(dump)+"\0");
+                }
             }
         }else if(body2.GetUserData()[0]=="tank"){
 
@@ -659,7 +691,41 @@ function init() {
             //wall
         }
 
+        console.log("pos1 is:"+pos1);
+        console.log("pos2 is:"+pos2);
 
+        if(pos1!=-1 &&pos2!=-1)
+        {
+            if(pos1>pos2){
+                console.log("pos1>pos2");
+                //console.log(ammoavl.splice(pos1,1)[0]);
+                ammofree.push(ammoavl.splice(pos1,1)[0]);
+                //console.log(ammoavl.splice(pos2,1)[0]);
+                ammofree.push(ammoavl.splice(pos2,1)[0]);
+            }else if(pos1<pos2){
+                console.log("pos2>pos1");
+                //console.log(ammoavl.splice(pos2,1)[0]);
+                ammofree.push(ammoavl.splice(pos2,1)[0]);
+                //console.log(ammoavl.splice(pos1,1)[0]);
+                ammofree.push(ammoavl.splice(pos1,1)[0]);
+            }else{
+                console.log("pos2=pos1");
+                //console.log(ammoavl.splice(pos2,1)[0]);
+                ammofree.push(ammoavl.splice(pos1,1)[0]);
+            }
+        }else if(pos1!=-1 &&pos2==-1){
+            console.log("only pos1");
+            //console.log(ammoavl.splice(pos1,1)[0]);
+            ammofree.push(ammoavl.splice(pos1,1)[0]);
+        }else if(pos1==-1 &&pos2!=-1){
+            console.log("only pos2");
+            //console.log(ammoavl.splice(pos2,1)[0]);
+            ammofree.push(ammoavl.splice(pos2,1)[0]);
+        }else{
+            //
+        }
+        console.log("ammoavl:"+ammoavl);
+        console.log("ammofree:"+ammofree);
         //console.log(contact.GetFixtureA().GetBody().GetPosition());
         //console.log(contact.GetFixtureB().GetBody().GetPosition());
 
@@ -711,18 +777,9 @@ function init() {
 
 }; // init()
 
-  function retIndex(val){
-      var flag=-1;
-      for(var i=0;i<ammoavl.length;i++)
-      {
-          if(ammoavl[i]==val)
-            flag=i;
-      }
-      return flag;
-  }
-
 function update() {
-    readBuffer(buffer);
+    readBuffer(buffer,true);
+    clearAmmo();
     world.Step(
         1 / WorldStep   //frame-rate
         ,  8       //velocity iterations
@@ -730,6 +787,7 @@ function update() {
     );
     world.DrawDebugData();
     world.ClearForces();
+    count++;
 
 
     /*
@@ -751,17 +809,17 @@ function update() {
         for(var i=0;i<avl.length;i++)
         {
             if(playerArray[avl[i]]["sock"]==socket)
-            {   console.log(playerArray);
-                console.log(ammo);
+            {   //console.log(playerArray);
+                //console.log(ammo);
                 data["info"]="left";
                 data["pid"]=avl[i];
                 free.push(avl[i]);
-                console.log("Player id"+ avl[i] +" Disconnected...");
+                //console.log("Player id"+ avl[i] +" Disconnected...");
                 avl.splice(i,1);
                 for(var j=0;j<avl.length;j++)
                     playerArray[avl[j]]["sock"].write(JSON.stringify(data)+"\0");
-                console.log("avl array"+avl);
-                console.log("free array"+free);
+                //console.log("avl array"+avl);
+                //console.log("free array"+free);
             }
         }
 
@@ -783,7 +841,7 @@ function update() {
     socket.on("close", function(exception) {onDisconnect(exception)});
 
 });
-server.listen(9001, "25.89.188.115");
+server.listen(9001, "127.0.0.1");
 
 function writeCrossDomainFile()
 {
@@ -794,6 +852,14 @@ function writeCrossDomainFile()
     xml += '</cross-domain-policy>\n';
 
     return xml;
+}
+
+function clearAmmo(){
+    for(var i=0;i<trashBin.length;i++)
+    {
+        world.DestroyBody(ammo[trashBin[i]].body);
+    }
+    trashBin=[];
 }
 
 
