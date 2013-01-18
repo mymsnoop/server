@@ -137,7 +137,7 @@ var server = net.createServer(function (socket) {
 
 
 });
-server.listen(9001, "127.0.0.1"); //ip and port for the socket server
+server.listen(9001, "25.89.188.115"); //ip and port for the socket server
 
 
 //write the crossdomain xml to bypass the flash socket security concerns
@@ -249,6 +249,7 @@ function readRooms(sockvar){
         if(rooms[roomsUsed[i]]!=null)
         {   payload.rooms[c]={};
             payload.rooms[c].roomId=rooms[roomsUsed[i]].roomId;
+            payload.rooms[c].roomName=rooms[roomsUsed[i]].roomName;
             payload.rooms[c].players=rooms[roomsUsed[i]].reference.getPlayers();
             c++;
         }

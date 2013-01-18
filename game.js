@@ -12,7 +12,7 @@ var SCALE = 60;
 var WorldStep=30;
 var count=0;
 var gameStarted=false;
-var tankSize={"width":100,"height":40};
+var tankSize={"width":48,"height":28};
 var ammoSize= new Array();
 ammoSize[0]={"width":10,"height":10};
 ammoSize[1]={"width":40,"height":12};
@@ -26,6 +26,12 @@ console.log("hello man");
 var velDel=1/SCALE;
 var map={};
 var c=0;
+
+
+    //obstacle variables
+    var pillar={"radius":50/2};
+    var wall={"width":50,"height":22};
+
 
 function construct(){
     for(var i=99;i>=0;i--)
@@ -61,7 +67,7 @@ var world = new b2World(
 
 
 
-var canvas={"width":720,"height":480};
+var canvas={"width":760,"height":640};
 
 
     function Player(sockvar){
@@ -258,7 +264,10 @@ function readBuffer(queue,broadcastIt){
             playerArray[ind]= new Player(sock);
             playerArray[ind].body.SetUserData(['tank',ind]);
             console.log("Player id"+ ind +" Connected...");
-
+            var mapdata={};
+            mapdata["info"]="map";
+            mapdata["data"]=map
+            playerArray[ind]["sock"].write(JSON.stringify(mapdata)+"\0");
             var aData={};
             aData["info"]="player";
             aData["position"]={"x":playerArray[ind].body.GetPosition().x,"y":playerArray[ind].body.GetPosition().y};
@@ -269,10 +278,7 @@ function readBuffer(queue,broadcastIt){
             aData["regen"]=playerArray[ind]["regen"];
             playerArray[ind]["sock"].write(JSON.stringify(aData)+"\0");
 
-            var mapdata={};
-            mapdata["info"]="map";
-            mapdata["data"]=map
-            playerArray[ind]["sock"].write(JSON.stringify(mapdata)+"\0");
+
 
             for(var i=0;i<avl.length;i++)
             {   var data={};
@@ -579,25 +585,22 @@ function init() {
     EVERY DIMENSION IS IN PIXEL COORDINATES NOT WORLD COORDINATES
 
     pillars is an array storing the pillar data to be generated
-    the parameters are in the form of [x,y,r]
+    the parameters are in the form of [x,y]
     x:abscissa
     y:ordinate
-    r:radius
 
     walls is an array storing the wall data to be generated
-    the parameters are in the form of [x,y,l,b,rot]
+    the parameters are in the form of [x,y,rot]
      x:abscissa
      y:ordinate
-     l:length
-     b:breadth
      rot:angle
      */
     var pillars=[];
     var walls=[];
     var id=0;
     if(id==0){
-        pillars=[[200,100,25],[200,200,15],[200,300,10],[200,400,30]];
-        walls=[[400,100,100,25,0],[400,200,200,10,0],[400,300,100,25,45],[400,400,100,25,90]];
+        pillars=[[160,75],[650,75],[160,525],[650,525],[400,300]];
+        walls=[[310,170,90],[310,220,90],[310,370,90],[310,420,90] , [490,170,90],[490,220,90],[490,370,90],[490,420,90] , [230,230,0],[280,230,0],[530,230,0],[580,230,0] , [230,350,0],[280,350,0],[530,350,0],[580,350,0]];
     }else if(id==1){
         pillars=[[],[],[],[],[]];
         walls=[[],[],[],[],[]];
@@ -614,18 +617,18 @@ function init() {
     {
         bodyDef.position.x = walls[i][0]/SCALE;
         bodyDef.position.y = walls[i][1]/SCALE;
-        fixDef.shape.SetAsBox((walls[i][2] / SCALE) / 2, (walls[i][3] / SCALE) / 2);
+        fixDef.shape.SetAsBox((wall.width / SCALE) / 2, (wall.height / SCALE) / 2);
         bdy=world.CreateBody(bodyDef);
         bdy.SetUserData('wall');
         bdy.CreateFixture(fixDef);
-        bdy.SetAngle(walls[i][4]);
+        bdy.SetAngle(walls[i][2]);
     }
 
     for(var i=0;i<pillars.length;i++)
     {
         bodyDef.position.x = pillars[i][0]/SCALE;
         bodyDef.position.y = pillars[i][1]/SCALE;
-        fixDef.shape = new b2CircleShape(pillars[i][2]/SCALE);
+        fixDef.shape = new b2CircleShape(pillar.radius/SCALE);
         bdy=world.CreateBody(bodyDef);
         bdy.SetUserData('pillar');
         bdy.CreateFixture(fixDef);
