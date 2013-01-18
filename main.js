@@ -22,12 +22,12 @@ var serverStarted=false;
 var avlRooms=[0,1,2,3,4,5];
 var roomsUsed=new Array();
 
-function room(roomId,name,pwd){
+function room(roomId,name,pwd,mapType){
     // room id is the unique id from 0-5
     this.roomId=roomId;
 
     // the reference to the associated room, all the game functions are invoked using this
-    this.reference= new game();
+    this.reference= new game(mapType);
 
     // room name, if a new custom room is created
     if(name!=""){
@@ -137,7 +137,7 @@ var server = net.createServer(function (socket) {
 
 
 });
-server.listen(9001, "25.89.188.115"); //ip and port for the socket server
+server.listen(9001, "127.0.0.1"); //ip and port for the socket server
 
 
 //write the crossdomain xml to bypass the flash socket security concerns
@@ -186,7 +186,7 @@ function readBuffer(queue){
                 //if the rooms are available
                 var ind=avlRooms.pop();
                 roomsUsed.push(ind);
-                rooms[ind]=new room(ind,data.arenaName,data.password);
+                rooms[ind]=new room(ind,data.arenaName,data.password,data.mapType);
 
                 //send affirmation to the client
                 var obj={};

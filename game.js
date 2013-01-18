@@ -1,4 +1,4 @@
-var game=function(){
+var game=function(maptype){
 var Box2D=require('./box2d.js');
 var playerArray=new Array();
 var ammo=new Array();
@@ -26,11 +26,17 @@ console.log("hello man");
 var velDel=1/SCALE;
 var map={};
 var c=0;
+var mapType=maptype;
+
+//obstacle variables
+var pillar={"radius":50/2};
+var wall={"width":50,"height":22};
+
+    //round related variable
+    var roundNum=0;
 
 
-    //obstacle variables
-    var pillar={"radius":50/2};
-    var wall={"width":50,"height":22};
+
 
 
 function construct(){
@@ -117,6 +123,10 @@ var canvas={"width":760,"height":640};
         this["teleTime"]=0;
         this["invisTime"]=0;
         this["nitroTime"]=0;
+
+        //skill variables
+        this["skills"]=new Array();
+        this["cooldown"]=new Array();
     }
 
     function Ammo(xpos,ypos,type){
@@ -259,6 +269,12 @@ function readBuffer(queue,broadcastIt){
             //console.log(playerArray[data.pid]["body"].GetLinearVelocity());
             //console.log(playerArray[data.pid]["body"].GetPosition());
             //console.log(playerArray[data.pid]["body"].GetLinearVelocity());
+        }else if(data.info=="spellSelected")
+        {
+            console.log("spellSelected buffer found..");
+            playerArray[data.pid].skills.push(data.selected);
+            playerArray[data.pid].cooldown.push(0);
+
         }else if(data.info=="join"){
             var ind=free.pop();
             playerArray[ind]= new Player(sock);
@@ -268,6 +284,12 @@ function readBuffer(queue,broadcastIt){
             mapdata["info"]="map";
             mapdata["data"]=map
             playerArray[ind]["sock"].write(JSON.stringify(mapdata)+"\0");
+
+            var payload={};
+            payload["info"]="spellSelect";
+            payload["skills"]=playerArray[ind]["skills"];
+            playerArray[ind]["sock"].write(JSON.stringify(payload)+"\0");
+
             var aData={};
             aData["info"]="player";
             aData["position"]={"x":playerArray[ind].body.GetPosition().x,"y":playerArray[ind].body.GetPosition().y};
@@ -597,17 +619,16 @@ function init() {
      */
     var pillars=[];
     var walls=[];
-    var id=0;
-    if(id==0){
+    if(mapType==0){
         pillars=[[160,75],[650,75],[160,525],[650,525],[400,300]];
         walls=[[310,170,90],[310,220,90],[310,370,90],[310,420,90] , [490,170,90],[490,220,90],[490,370,90],[490,420,90] , [230,230,0],[280,230,0],[530,230,0],[580,230,0] , [230,350,0],[280,350,0],[530,350,0],[580,350,0]];
-    }else if(id==1){
+    }else if(mapType==1){
         pillars=[[],[],[],[],[]];
         walls=[[],[],[],[],[]];
-    }else if(id==2){
+    }else if(mapType==2){
         pillars=[[],[],[],[],[]];
         walls=[[],[],[],[],[]];
-    }else if(id==3){
+    }else if(mapType==3){
         pillars=[[],[],[],[],[]];
         walls=[[],[],[],[],[]];
     }
