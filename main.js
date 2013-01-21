@@ -27,6 +27,8 @@ function room(roomId,name,pwd,mapType){
     this.roomId=roomId;
 
     // the reference to the associated room, all the game functions are invoked using this
+    if(mapType==null)
+        mapType=0;
     this.reference= new game(mapType);
 
     // room name, if a new custom room is created
