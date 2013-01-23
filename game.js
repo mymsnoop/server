@@ -27,6 +27,8 @@ var velDel=1/SCALE;
 var map={};
 var c=0;
 var mapType=maptype;
+    var cdTime=6;
+    var  cooldownTime=[cdTime*WorldStep,cdTime*WorldStep,cdTime*WorldStep,cdTime*WorldStep,cdTime*WorldStep];
 
 //obstacle variables
 var pillar={"radius":50/2};
@@ -81,7 +83,7 @@ var canvas={"width":760,"height":640};
         var fixDef = new b2FixtureDef;
         fixDef.density = 1.0;
         fixDef.friction = 0.5;
-        fixDef.restitution = 0.2;
+        fixDef.restitution = 0.5;
         fixDef.shape = new b2PolygonShape;
         var bodyDef = new b2BodyDef;
         bodyDef.type = b2Body.b2_dynamicBody;
@@ -132,8 +134,8 @@ var canvas={"width":760,"height":640};
     function Ammo(xpos,ypos,type){
         var fixDef = new b2FixtureDef;
         fixDef.density = 100.0;
-        fixDef.friction = 0.5;
-        fixDef.restitution = 0.2;
+        fixDef.friction = 0;
+        fixDef.restitution = 1;
         fixDef.shape = new b2PolygonShape;
         var bodyDef = new b2BodyDef;
         bodyDef.type = b2Body.b2_dynamicBody;
@@ -273,7 +275,7 @@ function readBuffer(queue,broadcastIt){
         {
             console.log("spellSelected buffer found..");
             playerArray[data.pid].skills.push(data.selected);
-            playerArray[data.pid].cooldown.push(0);
+            playerArray[data.pid].cooldown[data.selected]=0;
 
         }else if(data.info=="join"){
             var ind=free.pop();
@@ -331,6 +333,7 @@ function readBuffer(queue,broadcastIt){
         {   console.log("ammo buffer found..");
             //clearInterval(animationPointer[data.pid]);
             console.log(data.type);
+            playerArray[data.pid].cooldown[data.type]=cooldownTime[data.type];
             if(data.type==0)
             {
                 var ind=ammofree.pop();
@@ -489,6 +492,18 @@ function broadcastData(){
                 {
                     playerArray[avl[j]]["sock"].write(JSON.stringify(edata)+"\0");
                 }
+            }
+        }
+
+        for (var j=0;j<playerArray[avl[i]].cooldown.length;j++){
+            if(playerArray[avl[i]].cooldown[j]<=0)
+            {
+                var edata={};
+                edata["info"]="cooldownOver";
+                edata["spell"]=j;
+                playerArray[avl[i]]..sock.write(JSON.stringify(edata)+"\0");
+            }else if(playerArray[avl[i]].cooldown[j]>0){
+                playerArray[avl[i]].cooldown[j]--;
             }
         }
     }
@@ -786,8 +801,8 @@ function init() {
 
 
 
-        contact.GetFixtureA().GetBody().SetLinearDamping(2);
-        contact.GetFixtureB().GetBody().SetLinearDamping(2);
+        contact.GetFixtureA().GetBody().SetLinearDamping(0.7);
+        contact.GetFixtureB().GetBody().SetLinearDamping(0.7);
 
 
 
