@@ -21,6 +21,7 @@ var turnRate=0.7;
 var teleportationTime=0.5*WorldStep;
 var invisibleTime=5*WorldStep;
 var nitroTime=2*WorldStep;
+    var phaseTime=5*WorldStep;
 var trashBin=new Array();
 console.log("hello man");
 var velDel=1/SCALE;
@@ -83,8 +84,10 @@ var canvas={"width":760,"height":640};
         var fixDef = new b2FixtureDef;
         fixDef.density = 1.0;
         fixDef.friction = 0.5;
-        fixDef.restitution = 0.5;
+        fixDef.restitution = 0.2;
         fixDef.shape = new b2PolygonShape;
+        fixDef.filter.categoryBits=0x0001;
+        fixDef.filter.maskBits=0xFFFF;
         var bodyDef = new b2BodyDef;
         bodyDef.type = b2Body.b2_dynamicBody;
         bodyDef.allowSleep = false;
@@ -93,7 +96,6 @@ var canvas={"width":760,"height":640};
         fixDef.shape.SetAsBox(tankSize.width/(2*SCALE),tankSize.height/(2*SCALE));
 
         var ass=world.CreateBody(bodyDef);
-        //ass.SetAngularDamping(1);
         //ass.SetLinearVelocity(new b2Vec2(1,0));
         ass.CreateFixture(fixDef);
         //modelArray.body = ass;
@@ -125,7 +127,7 @@ var canvas={"width":760,"height":640};
         this["teleTime"]=0;
         this["invisTime"]=0;
         this["nitroTime"]=0;
-
+        this["phaseTime"]=0;
         //skill variables
         this["skills"]=new Array();
         this["cooldown"]=new Array();
@@ -133,10 +135,12 @@ var canvas={"width":760,"height":640};
 
     function Ammo(xpos,ypos,type){
         var fixDef = new b2FixtureDef;
-        fixDef.density = 100.0;
+        fixDef.density = 5.0;
         fixDef.friction = 0;
         fixDef.restitution = 1;
         fixDef.shape = new b2PolygonShape;
+        fixDef.filter.categoryBits=0x0002;
+        fixDef.filter.maskBits=0xFFFF;
         var bodyDef = new b2BodyDef;
         bodyDef.type = b2Body.b2_dynamicBody;
         //console.log(type);
@@ -392,6 +396,11 @@ function readBuffer(queue,broadcastIt){
                 var xvel=  2*playerArray[data.pid]["body"].GetLinearVelocity().x;
                 var yvel=  2*playerArray[data.pid]["body"].GetLinearVelocity().y;
                 playerArray[data.pid]["body"].SetLinearVelocity(new b2Vec2(xvel,yvel));
+            }else if(data.type==5){
+                playerArray[data.pid]["phaseTime"]=phaseTime;
+                var fltr=playerArray[data.pid].body.GetFixtureList().GetFilterData();
+                fltr.maskBits=0xFFFB;
+                playerArray[data.pid].body.GetFixtureList().SetFilterData(fltr);
             }
         }
     }
@@ -496,16 +505,31 @@ function broadcastData(){
         }
 
         for (var j=0;j<playerArray[avl[i]].cooldown.length;j++){
-            if(playerArray[avl[i]].cooldown[j]<=0)
+            if(playerArray[avl[i]].cooldown[j]==0)
             {
                 var edata={};
                 edata["info"]="cooldownOver";
                 edata["spell"]=j;
-                playerArray[avl[i]]..sock.write(JSON.stringify(edata)+"\0");
+                playerArray[avl[i]].sock.write(JSON.stringify(edata)+"\0");
+                playerArray[avl[i]].cooldown[j]--;
             }else if(playerArray[avl[i]].cooldown[j]>0){
                 playerArray[avl[i]].cooldown[j]--;
             }
         }
+
+        if(playerArray[avl[i]]["phaseTime"]>0)
+        {
+            playerArray[avl[i]]["phaseTime"]--;
+            if(playerArray[avl[i]]["phaseTime"]==0)
+            {
+                var fltr=playerArray[avl[i]].body.GetFixtureList().GetFilterData();
+                fltr.maskBits=0xFFFF;
+                playerArray[avl[i]].body.GetFixtureList().SetFilterData(fltr);
+                playerArray[avl[i]].body.ApplyImpulse(new b2Vec2(0.1,0),playerArray[avl[i]].body.GetWorldCenter());
+            }
+        }
+
+
     }
     //console.log(ammo)  ;
     for(var i=0;i<ammoavl.length;i++)
@@ -649,6 +673,8 @@ function init() {
     }
 
     fixDef.shape = new b2PolygonShape;
+    fixDef.filter.categoryBits=0x0004;
+    fixDef.filter.maskBits=0xFFFF;
     for(var i=0;i<walls.length;i++)
     {
         bodyDef.position.x = walls[i][0]/SCALE;
@@ -686,6 +712,13 @@ function init() {
 
     //////////////////////////            ONCONTACT LISTENER            ///////////////////////////////////////////////////
     listener.BeginContact = function(contact) {
+
+
+    }
+
+
+    //////////////////////////            ONLeaveCONTACT LISTENER            ///////////////////////////////////////////////////
+    listener.EndContact = function(contact) {
         var body1=contact.GetFixtureA().GetBody();
         var body2=contact.GetFixtureB().GetBody();
         var pos1=-1;
@@ -719,7 +752,7 @@ function init() {
         }else if(body1.GetUserData()[0]=="tank"){
 
         }else{
-        //wall
+            //wall
         }
 
         if(body2.GetUserData()[0]=="ammo"){
@@ -792,17 +825,10 @@ function init() {
         //console.log(contact.GetFixtureB().GetBody().GetPosition());
 
 
-    }
 
 
-    //////////////////////////            ONLeaveCONTACT LISTENER            ///////////////////////////////////////////////////
-    listener.EndContact = function(contact) {
-
-
-
-
-        contact.GetFixtureA().GetBody().SetLinearDamping(0.7);
-        contact.GetFixtureB().GetBody().SetLinearDamping(0.7);
+        contact.GetFixtureA().GetBody().SetLinearDamping(1.5);
+        contact.GetFixtureB().GetBody().SetLinearDamping(1.5);
 
 
 
