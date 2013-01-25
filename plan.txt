@@ -1,0 +1,27 @@
+add a variety of maps and aesthetics{	
+waterbody
+bridge
+ice
+
+}
+variety of tanks{
+	density,velocity,size,hp
+	velocity=k/density
+	hp=k*density
+	size=k*density
+}
+
+add weapons{
+landmine
+laser
+phase
+shield
+}
+
+code of autogeneration of map
+
+custom map selector
+
+automated turrets
+
+health points

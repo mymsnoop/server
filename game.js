@@ -399,7 +399,7 @@ function readBuffer(queue,broadcastIt){
             }else if(data.type==5){
                 playerArray[data.pid]["phaseTime"]=phaseTime;
                 var fltr=playerArray[data.pid].body.GetFixtureList().GetFilterData();
-                fltr.maskBits=0xFFFB;
+                fltr.maskBits=0xFFF3;
                 playerArray[data.pid].body.GetFixtureList().SetFilterData(fltr);
             }
         }
@@ -662,8 +662,7 @@ function init() {
         pillars=[[160,75],[650,75],[160,525],[650,525],[400,300]];
         walls=[[310,170,90],[310,220,90],[310,370,90],[310,420,90] , [490,170,90],[490,220,90],[490,370,90],[490,420,90] , [230,230,0],[280,230,0],[530,230,0],[580,230,0] , [230,350,0],[280,350,0],[530,350,0],[580,350,0]];
     }else if(mapType==1){
-        pillars=[[],[],[],[],[]];
-        walls=[[],[],[],[],[]];
+        pillars=[[177,141],[595,142],[184,485],[595,487]];
     }else if(mapType==2){
         pillars=[[],[],[],[],[]];
         walls=[[],[],[],[],[]];
@@ -685,6 +684,9 @@ function init() {
         bdy.CreateFixture(fixDef);
         bdy.SetAngle(walls[i][2]);
     }
+
+    fixDef.filter.categoryBits=0x0008;
+    fixDef.filter.maskBits=0xFFFF;
 
     for(var i=0;i<pillars.length;i++)
     {
@@ -714,118 +716,158 @@ function init() {
     listener.BeginContact = function(contact) {
 
 
+
+        var body1=contact.GetFixtureA().GetBody();
+        var body2=contact.GetFixtureB().GetBody();
+        if(["tank","ammo"].indexOf(body1.GetUserData()[0])>-1 && ["tank","ammo"].indexOf(body2.GetUserData()[0])>-1){
+
+
+            if(body1.GetUserData()[0]=="tank" || body2.GetUserData()[0]=="tank"){
+
+                if(body2.GetUserData()[0]=="tank" && body1.GetUserData()[0]=="tank"){
+                    return;
+                }
+                var bdy1,bdy2;
+                if(body1.GetUserData()[0]=="tank"){
+                    bdy1=body1;
+                    bdy2=body2;
+                }else if(body2.GetUserData()[0]=="tank"){
+                    bdy1=body2;
+                    bdy2=body1;
+                }
+                var damage;
+
+                for(var i=0;i<ammoavl.length;i++){
+                    if(ammo[ammoavl[i]].body=bdy2)
+                    {
+                        damage=ammo[avl[i]].dmg;
+                    }
+                }
+
+                for(var i=0;i<avl.length;i++){
+                    if(playerArray[avl[i]].body=bdy1)
+                    {
+                        playerArray[avl[i]].hp-=damage;
+
+                        if(playerArray[avl[i]].hp<=0){
+                            var fltr=playerArray[avl[i]].body.GetFixtureList().GetFilterData();
+                            fltr.maskBits=0x0000;
+                            playerArray[avl[i]].body.GetFixtureList().SetFilterData(fltr);
+                        }
+                        var obj={};
+                        obj["info"]="tanksHurt";
+                        obj["pid"]=avl[i];
+                        obj["hp"]=playerArray[avl[i]].hp;
+                        for(var i=0;i<avl.length;i++)
+                            playerArray[avl[i]].sock.write(obj+"\0");
+                    }
+                }
+
+            }
+
+            var pos1=-1;
+            var pos2=-1;
+            if(body1.GetUserData()[0]=="ammo" ){
+                //console.log("ammoavl"+ammoavl);
+                //console.log("ammofree"+ammofree);
+                var dump={};
+                dump["info"]="missilesLost";
+                //console.log(body1.GetUserData()[1]);
+                dump["pid"]=body1.GetUserData()[1];
+                console.log(parseInt(body1.GetUserData()[1]));
+                for(var i=0;i<ammoavl.length;i++)
+                    console.log(ammoavl[i]);
+                console.log("index in ammoavl "+ammoavl.indexOf(parseInt(body1.GetUserData()[1])));
+                pos1=  ammoavl.indexOf(parseInt(body1.GetUserData()[1]));
+                //console.log("index in ammoavl "+ammoavl.indexOf(parseInt(body1.GetUserData()[1])));
+                //retIndex(body2.GetUserData()[1])>-1?(ammofree.push(ammoavl.splice(retIndex(body2.GetUserData()[1]),1)[0])):console.log("index not found");
+                //world.DestroyBody(body1);
+                trashBin.push(body1.GetUserData()[1]);
+                console.log(ammo[dump["pid"]].body);
+                //ammofree.push(ammoavl.splice(ammoavl.indexOf(body1.GetUserData()[1]),1)[0]);
+                //console.log("ammoavl"+ammoavl);
+                //console.log("ammofree"+ammofree);
+                if(dump["pid"]!=null) {
+                    for(var j=0;j<avl.length;j++)
+                    {      console.log(JSON.stringify(dump));
+                        playerArray[avl[j]]["sock"].write(JSON.stringify(dump)+"\0");
+                    }
+                }
+            }
+
+            if(body2.GetUserData()[0]=="ammo"){
+                //console.log("ammoavl"+ammoavl);
+                //console.log("ammofree"+ammofree);
+                var dump={};
+                dump["info"]="missilesLost";
+                dump["pid"]=body2.GetUserData()[1];
+                //console.log("index in ammoavl "+ammoavl.indexOf(parseInt(body1.GetUserData()[1])));
+                console.log(parseInt(body1.GetUserData()[1]));
+                for(var i=0;i<ammoavl.length;i++)
+                    console.log(ammoavl[i]);
+                console.log("index in ammoavl "+ammoavl.indexOf(parseInt(body2.GetUserData()[1])));
+                pos2=ammoavl.indexOf(parseInt(body2.GetUserData()[1]));
+                //retIndex(body2.GetUserData()[1])>-1?(ammofree.push(ammoavl.splice(retIndex(body2.GetUserData()[1]),1)[0])):console.log("index not found");
+                //world.DestroyBody(body2);
+                trashBin.push(body2.GetUserData()[1]);
+                console.log(ammo[dump["pid"]].body);
+                //ammofree.push(ammoavl.splice(ammoavl.indexOf(body2.GetUserData()[1]),1)[0]);
+                //console.log("ammoavl"+ammoavl);
+                //console.log("ammofree"+ammofree);
+                if(dump["pid"]!=null) {
+                    for(var j=0;j<avl.length;j++)
+                    {   console.log(JSON.stringify(dump));
+                        playerArray[avl[j]]["sock"].write(JSON.stringify(dump)+"\0");
+                    }
+                }
+            }
+
+            console.log("pos1 is:"+pos1);
+            console.log("pos2 is:"+pos2);
+
+            if(pos1!=-1 &&pos2!=-1)
+            {
+                if(pos1>pos2){
+                    console.log("pos1>pos2");
+                    //console.log(ammoavl.splice(pos1,1)[0]);
+                    ammofree.push(ammoavl.splice(pos1,1)[0]);
+                    //console.log(ammoavl.splice(pos2,1)[0]);
+                    ammofree.push(ammoavl.splice(pos2,1)[0]);
+                }else if(pos1<pos2){
+                    console.log("pos2>pos1");
+                    //console.log(ammoavl.splice(pos2,1)[0]);
+                    ammofree.push(ammoavl.splice(pos2,1)[0]);
+                    //console.log(ammoavl.splice(pos1,1)[0]);
+                    ammofree.push(ammoavl.splice(pos1,1)[0]);
+                }else{
+                    console.log("pos2=pos1");
+                    //console.log(ammoavl.splice(pos2,1)[0]);
+                    ammofree.push(ammoavl.splice(pos1,1)[0]);
+                }
+            }else if(pos1!=-1 &&pos2==-1){
+                console.log("only pos1");
+                //console.log(ammoavl.splice(pos1,1)[0]);
+                ammofree.push(ammoavl.splice(pos1,1)[0]);
+            }else if(pos1==-1 &&pos2!=-1){
+                console.log("only pos2");
+                //console.log(ammoavl.splice(pos2,1)[0]);
+                ammofree.push(ammoavl.splice(pos2,1)[0]);
+            }else{
+                //
+            }
+            console.log("ammoavl:"+ammoavl);
+            console.log("ammofree:"+ammofree);
+            //console.log(contact.GetFixtureA().GetBody().GetPosition());
+            //console.log(contact.GetFixtureB().GetBody().GetPosition());
+
+
+        }
+
     }
 
 
     //////////////////////////            ONLeaveCONTACT LISTENER            ///////////////////////////////////////////////////
     listener.EndContact = function(contact) {
-        var body1=contact.GetFixtureA().GetBody();
-        var body2=contact.GetFixtureB().GetBody();
-        var pos1=-1;
-        var pos2=-1;
-        if(body1.GetUserData()[0]=="ammo"){
-            //console.log("ammoavl"+ammoavl);
-            //console.log("ammofree"+ammofree);
-            var dump={};
-            dump["info"]="missilesLost";
-            //console.log(body1.GetUserData()[1]);
-            dump["pid"]=body1.GetUserData()[1];
-            console.log(parseInt(body1.GetUserData()[1]));
-            for(var i=0;i<ammoavl.length;i++)
-                console.log(ammoavl[i]);
-            console.log("index in ammoavl "+ammoavl.indexOf(parseInt(body1.GetUserData()[1])));
-            pos1=  ammoavl.indexOf(parseInt(body1.GetUserData()[1]));
-            //console.log("index in ammoavl "+ammoavl.indexOf(parseInt(body1.GetUserData()[1])));
-            //retIndex(body2.GetUserData()[1])>-1?(ammofree.push(ammoavl.splice(retIndex(body2.GetUserData()[1]),1)[0])):console.log("index not found");
-            //world.DestroyBody(body1);
-            trashBin.push(body1.GetUserData()[1]);
-            console.log(ammo[dump["pid"]].body);
-            //ammofree.push(ammoavl.splice(ammoavl.indexOf(body1.GetUserData()[1]),1)[0]);
-            //console.log("ammoavl"+ammoavl);
-            //console.log("ammofree"+ammofree);
-            if(dump["pid"]!=null) {
-                for(var j=0;j<avl.length;j++)
-                {      console.log(JSON.stringify(dump));
-                    playerArray[avl[j]]["sock"].write(JSON.stringify(dump)+"\0");
-                }
-            }
-        }else if(body1.GetUserData()[0]=="tank"){
-
-        }else{
-            //wall
-        }
-
-        if(body2.GetUserData()[0]=="ammo"){
-            //console.log("ammoavl"+ammoavl);
-            //console.log("ammofree"+ammofree);
-            var dump={};
-            dump["info"]="missilesLost";
-            dump["pid"]=body2.GetUserData()[1];
-            //console.log("index in ammoavl "+ammoavl.indexOf(parseInt(body1.GetUserData()[1])));
-            console.log(parseInt(body1.GetUserData()[1]));
-            for(var i=0;i<ammoavl.length;i++)
-                console.log(ammoavl[i]);
-            console.log("index in ammoavl "+ammoavl.indexOf(parseInt(body1.GetUserData()[1])));
-            pos2=ammoavl.indexOf(parseInt(body1.GetUserData()[1]));
-            //retIndex(body2.GetUserData()[1])>-1?(ammofree.push(ammoavl.splice(retIndex(body2.GetUserData()[1]),1)[0])):console.log("index not found");
-            //world.DestroyBody(body2);
-            trashBin.push(body2.GetUserData()[1]);
-            console.log(ammo[dump["pid"]].body);
-            //ammofree.push(ammoavl.splice(ammoavl.indexOf(body2.GetUserData()[1]),1)[0]);
-            //console.log("ammoavl"+ammoavl);
-            //console.log("ammofree"+ammofree);
-            if(dump["pid"]!=null) {
-                for(var j=0;j<avl.length;j++)
-                {   console.log(JSON.stringify(dump));
-                    playerArray[avl[j]]["sock"].write(JSON.stringify(dump)+"\0");
-                }
-            }
-        }else if(body2.GetUserData()[0]=="tank"){
-
-        }else{
-            //wall
-        }
-
-        console.log("pos1 is:"+pos1);
-        console.log("pos2 is:"+pos2);
-
-        if(pos1!=-1 &&pos2!=-1)
-        {
-            if(pos1>pos2){
-                console.log("pos1>pos2");
-                //console.log(ammoavl.splice(pos1,1)[0]);
-                ammofree.push(ammoavl.splice(pos1,1)[0]);
-                //console.log(ammoavl.splice(pos2,1)[0]);
-                ammofree.push(ammoavl.splice(pos2,1)[0]);
-            }else if(pos1<pos2){
-                console.log("pos2>pos1");
-                //console.log(ammoavl.splice(pos2,1)[0]);
-                ammofree.push(ammoavl.splice(pos2,1)[0]);
-                //console.log(ammoavl.splice(pos1,1)[0]);
-                ammofree.push(ammoavl.splice(pos1,1)[0]);
-            }else{
-                console.log("pos2=pos1");
-                //console.log(ammoavl.splice(pos2,1)[0]);
-                ammofree.push(ammoavl.splice(pos1,1)[0]);
-            }
-        }else if(pos1!=-1 &&pos2==-1){
-            console.log("only pos1");
-            //console.log(ammoavl.splice(pos1,1)[0]);
-            ammofree.push(ammoavl.splice(pos1,1)[0]);
-        }else if(pos1==-1 &&pos2!=-1){
-            console.log("only pos2");
-            //console.log(ammoavl.splice(pos2,1)[0]);
-            ammofree.push(ammoavl.splice(pos2,1)[0]);
-        }else{
-            //
-        }
-        console.log("ammoavl:"+ammoavl);
-        console.log("ammofree:"+ammofree);
-        //console.log(contact.GetFixtureA().GetBody().GetPosition());
-        //console.log(contact.GetFixtureB().GetBody().GetPosition());
-
-
-
 
         contact.GetFixtureA().GetBody().SetLinearDamping(1.5);
         contact.GetFixtureB().GetBody().SetLinearDamping(1.5);
