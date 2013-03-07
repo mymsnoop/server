@@ -23,6 +23,7 @@ var invisibleTime=5*WorldStep;
 var nitroTime=2*WorldStep;
     var phaseTime=5*WorldStep;
 var trashBin=new Array();
+var playerBin=new Array();
 console.log("hello man");
 var velDel=1/SCALE;
 var map={};
@@ -122,6 +123,7 @@ var canvas={"width":760,"height":640};
         this["sock"]=sockvar;
         // acknowledge signal true=sent   false=waiting
         this["ack"]=true;
+        this["dead"]=false;
         //distance travelled by missile
         this["travelled"]=0;
         this["teleTime"]=0;
@@ -232,7 +234,7 @@ function readBuffer(queue,broadcastIt){
         console.log("data is:"+data);
         var sock=firstReq["playerSock"];
         //console.log("sock is:"+sock);
-        if(data.info=="position")
+        if(data.info=="position" && playerArray[data.pid].dead==false)
         {   console.log("position buffer found..");
             playerArray[data.pid]["final"]["x"]=data.position.x/SCALE;
             playerArray[data.pid]["final"]["y"]=data.position.y/SCALE;
@@ -275,7 +277,7 @@ function readBuffer(queue,broadcastIt){
             //console.log(playerArray[data.pid]["body"].GetLinearVelocity());
             //console.log(playerArray[data.pid]["body"].GetPosition());
             //console.log(playerArray[data.pid]["body"].GetLinearVelocity());
-        }else if(data.info=="spellSelected")
+        }else if(data.info=="spellSelected" && playerArray[data.pid].dead==false)
         {
             console.log("spellSelected buffer found..");
             playerArray[data.pid].skills.push(data.selected);
@@ -333,7 +335,7 @@ function readBuffer(queue,broadcastIt){
             console.log("avl array"+avl);
             console.log("free array"+free);
 
-        }else if(data.info=="ammo")
+        }else if(data.info=="ammo" && playerArray[data.pid].dead==false)
         {   console.log("ammo buffer found..");
             //clearInterval(animationPointer[data.pid]);
             console.log(data.type);
@@ -616,28 +618,28 @@ function init() {
     bodyDef.position.y = (canvas.height / SCALE) ;
     fixDef.shape.SetAsBox((canvas.width / SCALE) / 2, 0.5 / 2);
     bdy=world.CreateBody(bodyDef);
-    bdy.SetUserData('wall');
+    bdy.SetUserData(['wall']);
     bdy.CreateFixture(fixDef);
     //////////////////////////////////////////////////////////
     bodyDef.position.x = canvas.width / 2 / SCALE;
     bodyDef.position.y = 0;
     fixDef.shape.SetAsBox((canvas.width / SCALE) / 2, 0.5 / 2);
     bdy=world.CreateBody(bodyDef);
-    bdy.SetUserData('wall');
+    bdy.SetUserData(['wall']);
     bdy.CreateFixture(fixDef);
     ////////////////////////////////////////////////////////
     bodyDef.position.x = 0;
     bodyDef.position.y = (canvas.height /2/ SCALE);
     fixDef.shape.SetAsBox(0.5/ 2, (canvas.width / SCALE) / 2);
     bdy=world.CreateBody(bodyDef);
-    bdy.SetUserData('wall');
+    bdy.SetUserData(['wall']);
     bdy.CreateFixture(fixDef);
     ///////////////////////////////////////////////////////////
     bodyDef.position.x = (canvas.width / SCALE);
     bodyDef.position.y = (canvas.height / 2/SCALE);
     fixDef.shape.SetAsBox(0.5/ 2, (canvas.width / SCALE) / 2);
     bdy=world.CreateBody(bodyDef);
-    bdy.SetUserData('wall');
+    bdy.SetUserData(['wall']);
     bdy.CreateFixture(fixDef);
 
 
@@ -680,7 +682,7 @@ function init() {
         bodyDef.position.y = walls[i][1]/SCALE;
         fixDef.shape.SetAsBox((wall.width / SCALE) / 2, (wall.height / SCALE) / 2);
         bdy=world.CreateBody(bodyDef);
-        bdy.SetUserData('wall');
+        bdy.SetUserData(['wall']);
         bdy.CreateFixture(fixDef);
         bdy.SetAngle(walls[i][2]);
     }
@@ -694,7 +696,7 @@ function init() {
         bodyDef.position.y = pillars[i][1]/SCALE;
         fixDef.shape = new b2CircleShape(pillar.radius/SCALE);
         bdy=world.CreateBody(bodyDef);
-        bdy.SetUserData('pillar');
+        bdy.SetUserData(['pillar']);
         bdy.CreateFixture(fixDef);
     }
 
@@ -714,156 +716,130 @@ function init() {
 
     //////////////////////////            ONCONTACT LISTENER            ///////////////////////////////////////////////////
     listener.BeginContact = function(contact) {
+        var bArr;
 
+        bArr=bodyContactVerify(contact,['tank','tank']);
+        if(bArr!=null){
+            return;
+        }
 
+        bArr=bodyContactVerify(contact,['tank','ammo']);
+        if(bArr!=null){
+            var damage;
 
-        var body1=contact.GetFixtureA().GetBody();
-        var body2=contact.GetFixtureB().GetBody();
-        if(["tank","ammo"].indexOf(body1.GetUserData()[0])>-1 && ["tank","ammo"].indexOf(body2.GetUserData()[0])>-1){
-
-
-            if(body1.GetUserData()[0]=="tank" || body2.GetUserData()[0]=="tank"){
-
-                if(body2.GetUserData()[0]=="tank" && body1.GetUserData()[0]=="tank"){
-                    return;
-                }
-                var bdy1,bdy2;
-                if(body1.GetUserData()[0]=="tank"){
-                    bdy1=body1;
-                    bdy2=body2;
-                }else if(body2.GetUserData()[0]=="tank"){
-                    bdy1=body2;
-                    bdy2=body1;
-                }
-                var damage;
-
-                for(var i=0;i<ammoavl.length;i++){
-                    if(ammo[ammoavl[i]].body=bdy2)
-                    {
-                        damage=ammo[avl[i]].dmg;
-                    }
-                }
-
-                for(var i=0;i<avl.length;i++){
-                    if(playerArray[avl[i]].body=bdy1)
-                    {
-                        playerArray[avl[i]].hp-=damage;
-
-                        if(playerArray[avl[i]].hp<=0){
-                            var fltr=playerArray[avl[i]].body.GetFixtureList().GetFilterData();
-                            fltr.maskBits=0x0000;
-                            playerArray[avl[i]].body.GetFixtureList().SetFilterData(fltr);
+            for(var i=0;i<ammoavl.length;i++){
+                if(ammo[ammoavl[i]].body==bArr[1])
+                {
+                    damage=ammo[avl[i]].dmg;
+                    var dump={};
+                    dump["info"]="missilesLost";
+                    dump["pid"]=bArr[1].GetUserData()[1];
+                    if(dump["pid"]!=null) {
+                        for(var j=0;j<avl.length;j++)
+                        {      console.log(JSON.stringify(dump));
+                            playerArray[avl[j]]["sock"].write(JSON.stringify(dump)+"\0");
                         }
-                        var obj={};
-                        obj["info"]="tanksHurt";
-                        obj["pid"]=avl[i];
-                        obj["hp"]=playerArray[avl[i]].hp;
-                        for(var i=0;i<avl.length;i++)
-                            playerArray[avl[i]].sock.write(obj+"\0");
+                        trashBin.push(dump["pid"]);
+                        ammofree.push(ammoavl.splice(dump["pid"],1)[0]);
                     }
                 }
-
             }
 
-            var pos1=-1;
-            var pos2=-1;
-            if(body1.GetUserData()[0]=="ammo" ){
-                //console.log("ammoavl"+ammoavl);
-                //console.log("ammofree"+ammofree);
+            for(var i=0;i<avl.length;i++){
+                if(playerArray[avl[i]].body==bArr[0])
+                {
+                    playerArray[avl[i]].hp-=damage;
+
+                    if(playerArray[avl[i]].hp<=0){
+                        playerArray[avl[i]].dead=true;
+                        playerBin.push(avl[i]);
+                    }
+                    var obj={};
+                    obj["info"]="tanksHurt";
+                    obj["pid"]=avl[i];
+                    obj["hp"]=playerArray[avl[i]].hp;
+                    for(var i=0;i<avl.length;i++)
+                        playerArray[avl[i]].sock.write(JSON.stringify(obj)+"\0");
+                }
+            }
+            return;
+        }
+
+
+        bArr=bodyContactVerify(contact,['ammo','ammo']);
+        if(bArr!=null) {
+
+            var pos=new Array();
+            for(var i=0;i<bArr.length;i++) {
                 var dump={};
                 dump["info"]="missilesLost";
-                //console.log(body1.GetUserData()[1]);
-                dump["pid"]=body1.GetUserData()[1];
-                console.log(parseInt(body1.GetUserData()[1]));
-                for(var i=0;i<ammoavl.length;i++)
-                    console.log(ammoavl[i]);
-                console.log("index in ammoavl "+ammoavl.indexOf(parseInt(body1.GetUserData()[1])));
-                pos1=  ammoavl.indexOf(parseInt(body1.GetUserData()[1]));
-                //console.log("index in ammoavl "+ammoavl.indexOf(parseInt(body1.GetUserData()[1])));
-                //retIndex(body2.GetUserData()[1])>-1?(ammofree.push(ammoavl.splice(retIndex(body2.GetUserData()[1]),1)[0])):console.log("index not found");
-                //world.DestroyBody(body1);
-                trashBin.push(body1.GetUserData()[1]);
-                console.log(ammo[dump["pid"]].body);
-                //ammofree.push(ammoavl.splice(ammoavl.indexOf(body1.GetUserData()[1]),1)[0]);
-                //console.log("ammoavl"+ammoavl);
-                //console.log("ammofree"+ammofree);
+                dump["pid"]=bArr[i].GetUserData()[1];
                 if(dump["pid"]!=null) {
                     for(var j=0;j<avl.length;j++)
                     {      console.log(JSON.stringify(dump));
                         playerArray[avl[j]]["sock"].write(JSON.stringify(dump)+"\0");
                     }
+                    trashBin.push(dump["pid"]);
+                    pos.push(dump["pid"]);
                 }
             }
 
-            if(body2.GetUserData()[0]=="ammo"){
-                //console.log("ammoavl"+ammoavl);
-                //console.log("ammofree"+ammofree);
-                var dump={};
-                dump["info"]="missilesLost";
-                dump["pid"]=body2.GetUserData()[1];
-                //console.log("index in ammoavl "+ammoavl.indexOf(parseInt(body1.GetUserData()[1])));
-                console.log(parseInt(body1.GetUserData()[1]));
-                for(var i=0;i<ammoavl.length;i++)
-                    console.log(ammoavl[i]);
-                console.log("index in ammoavl "+ammoavl.indexOf(parseInt(body2.GetUserData()[1])));
-                pos2=ammoavl.indexOf(parseInt(body2.GetUserData()[1]));
-                //retIndex(body2.GetUserData()[1])>-1?(ammofree.push(ammoavl.splice(retIndex(body2.GetUserData()[1]),1)[0])):console.log("index not found");
-                //world.DestroyBody(body2);
-                trashBin.push(body2.GetUserData()[1]);
-                console.log(ammo[dump["pid"]].body);
-                //ammofree.push(ammoavl.splice(ammoavl.indexOf(body2.GetUserData()[1]),1)[0]);
-                //console.log("ammoavl"+ammoavl);
-                //console.log("ammofree"+ammofree);
-                if(dump["pid"]!=null) {
-                    for(var j=0;j<avl.length;j++)
-                    {   console.log(JSON.stringify(dump));
-                        playerArray[avl[j]]["sock"].write(JSON.stringify(dump)+"\0");
-                    }
-                }
-            }
-
-            console.log("pos1 is:"+pos1);
-            console.log("pos2 is:"+pos2);
-
-            if(pos1!=-1 &&pos2!=-1)
-            {
-                if(pos1>pos2){
-                    console.log("pos1>pos2");
-                    //console.log(ammoavl.splice(pos1,1)[0]);
-                    ammofree.push(ammoavl.splice(pos1,1)[0]);
-                    //console.log(ammoavl.splice(pos2,1)[0]);
-                    ammofree.push(ammoavl.splice(pos2,1)[0]);
-                }else if(pos1<pos2){
-                    console.log("pos2>pos1");
-                    //console.log(ammoavl.splice(pos2,1)[0]);
-                    ammofree.push(ammoavl.splice(pos2,1)[0]);
-                    //console.log(ammoavl.splice(pos1,1)[0]);
-                    ammofree.push(ammoavl.splice(pos1,1)[0]);
-                }else{
-                    console.log("pos2=pos1");
-                    //console.log(ammoavl.splice(pos2,1)[0]);
-                    ammofree.push(ammoavl.splice(pos1,1)[0]);
-                }
-            }else if(pos1!=-1 &&pos2==-1){
-                console.log("only pos1");
+            if(pos[0]>pos[1]){
+                console.log("pos1>pos2");
                 //console.log(ammoavl.splice(pos1,1)[0]);
-                ammofree.push(ammoavl.splice(pos1,1)[0]);
-            }else if(pos1==-1 &&pos2!=-1){
-                console.log("only pos2");
+                ammofree.push(ammoavl.splice(pos[0],1)[0]);
                 //console.log(ammoavl.splice(pos2,1)[0]);
-                ammofree.push(ammoavl.splice(pos2,1)[0]);
+                ammofree.push(ammoavl.splice(pos[1],1)[0]);
+            }else if(pos[0]<pos[1]){
+                console.log("pos2>pos1");
+                //console.log(ammoavl.splice(pos2,1)[0]);
+                ammofree.push(ammoavl.splice(pos[1],1)[0]);
+                //console.log(ammoavl.splice(pos1,1)[0]);
+                ammofree.push(ammoavl.splice(pos[0],1)[0]);
             }else{
-                //
+                console.log("pos2=pos1");
+                //console.log(ammoavl.splice(pos2,1)[0]);
+                ammofree.push(ammoavl.splice(pos[1],1)[0]);
             }
-            console.log("ammoavl:"+ammoavl);
-            console.log("ammofree:"+ammofree);
-            //console.log(contact.GetFixtureA().GetBody().GetPosition());
-            //console.log(contact.GetFixtureB().GetBody().GetPosition());
 
+            return;
+        }
 
+        bArr=bodyContactVerify(contact,['ammo','wall']);
+        if(bArr!=null){
+            var dump={};
+            dump["info"]="missilesLost";
+            dump["pid"]=bArr[0].GetUserData()[1];
+            if(dump["pid"]!=null) {
+                for(var j=0;j<avl.length;j++)
+                {      console.log(JSON.stringify(dump));
+                    playerArray[avl[j]]["sock"].write(JSON.stringify(dump)+"\0");
+                }
+                trashBin.push(dump["pid"]);
+                ammofree.push(ammoavl.splice(dump["pid"],1)[0]);
+            }
+            return;
+        }
+
+        bArr=bodyContactVerify(contact,['ammo','pillar']);
+        if(bArr!=null){
+            var dump={};
+            dump["info"]="missilesLost";
+            dump["pid"]=bArr[0].GetUserData()[1];
+            if(dump["pid"]!=null) {
+                for(var j=0;j<avl.length;j++)
+                {      console.log(JSON.stringify(dump));
+                    playerArray[avl[j]]["sock"].write(JSON.stringify(dump)+"\0");
+                }
+                trashBin.push(dump["pid"]);
+                ammofree.push(ammoavl.splice(dump["pid"],1)[0]);
+            }
+            return;
         }
 
     }
+
+
 
 
     //////////////////////////            ONLeaveCONTACT LISTENER            ///////////////////////////////////////////////////
@@ -871,8 +847,6 @@ function init() {
 
         contact.GetFixtureA().GetBody().SetLinearDamping(1.5);
         contact.GetFixtureB().GetBody().SetLinearDamping(1.5);
-
-
 
     }
 
@@ -907,6 +881,24 @@ function init() {
 
 }; // init()
 
+function bodyContactVerify(contact,typeArr){
+    console.log(typeArr);
+    var name1=contact.GetFixtureA().GetBody().GetUserData()[0];
+    var name2=contact.GetFixtureB().GetBody().GetUserData()[0];
+    console.log(name1);
+    console.log(name2);
+    console.log(typeArr[0]);
+    console.log(typeArr[1]);
+    var bodyArr=null;
+    if(name1==typeArr[0] && name2==typeArr[1]){
+        bodyArr=[contact.GetFixtureA().GetBody(),contact.GetFixtureB().GetBody()];
+    }else if(name1==typeArr[1] && name2==typeArr[0]){
+        bodyArr=[contact.GetFixtureB().GetBody(),contact.GetFixtureA().GetBody()];
+    }
+    //console.log(bodyArr);
+    return bodyArr;
+}
+
 function update() {
     readBuffer(buffer,true);
     clearAmmo();
@@ -935,13 +927,21 @@ function update() {
 
 
 
-function clearAmmo(){
-    for(var i=0;i<trashBin.length;i++)
-    {
+    function clearAmmo(){
+        for(var i=0;i<trashBin.length;i++)
+        {
         world.DestroyBody(ammo[trashBin[i]].body);
+        }
+        trashBin=[];
     }
-    trashBin=[];
-}
+
+    function clearAmmo(){
+        for(var i=0;i<playerBin.length;i++)
+        {
+            world.DestroyBody(playerArray[playerBin[i]].body);
+        }
+        playerBin=[];
+    }
 
     this.loadBuffer=function(data){
         if(!gameStarted)
